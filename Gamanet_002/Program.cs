@@ -198,9 +198,8 @@ namespace Gamanet_002
         private static bool checkEnding(Context context, Stream stream)
         {
             char endingSymbol = 'E';
-            bool engingPacket = checkedRead(endingSymbol, context, stream);
             
-            return engingPacket;
+            return checkedRead(endingSymbol, context, stream);
         }
 
         // checks the symbol being Stream.Read, if it coresponds to expected symbol (exampleSymbol) returns  true.
