@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace Gamanet_002
 {
 
-    class MyStream : StreamReader
+    class Stream : StreamReader
     {   
         public int Peak()
         {
@@ -20,16 +20,16 @@ namespace Gamanet_002
         {
             return base.Read();
         }
-        public MyStream(String buffer) : base(Console.OpenStandardInput())
+        public Stream() : base(Console.OpenStandardInput())
         {
             
         }  
     }
 
-    class MyContext
+    class Context
     {
         String command;  
-        String parametr; //at the time of program execution it is populated with parameter
+        String parameter; //at the time of program execution it is populated with parameter
         String packet;   //at the time of program execution it is populated with full packet
 
         public void setPacket(String packet) { this.packet = packet; }
@@ -38,8 +38,8 @@ namespace Gamanet_002
         public void setCommand(String command) { this.command = command; }
         public String getCommand() { return this.command; }
 
-        public void setParametr(String parametr) { this.parametr = parametr; }
-        public String getParametr() { return this.parametr; }
+        public void setParameter(String parameter) { this.parameter = parameter; }
+        public String getParameter() { return this.parameter; }
     }
 
 
@@ -48,23 +48,23 @@ namespace Gamanet_002
 
     class Program
     {   
-        private delegate bool Parse(MyContext context, MyStream stream);
+        private delegate bool Parse(Context context, Stream stream);
         static void Main(string[] args)
         {
             // starts the program
-            run("");
+            run();
         }
 
         
-        static void run(String allPackets)
+        static void run()
         {
             Console.WriteLine();
            
-            MyContext context = new MyContext();
-            MyStream stream = new MyStream(allPackets);
+            Context context = new Context();
+            Stream stream = new Stream();
 
             // creates fixed order of checking methods call.
-            Parse[] parsers = new Parse[] { checkBegin, checkComand, checkSeparator, checkParams, checkSeparator, checkEnding};
+            Parse[] parsers = new Parse[] {  checkBegin, checkComand, checkSeparator, checkParams, checkSeparator, checkEnding};
             
             try
             {
@@ -78,7 +78,7 @@ namespace Gamanet_002
 
                     if (ACKpacket) {
                         Console.WriteLine("ACK   "+ context.getPacket());
-                        makeComand(context);
+                        executeCommand(context);
                     }
                     else { Console.WriteLine("NACK  " + context.getPacket()); }
                     context.setPacket("");   
@@ -92,14 +92,14 @@ namespace Gamanet_002
 
 
         // checks the first symbol of the packet
-        private static bool checkBegin(MyContext context, MyStream stream)
+        private static bool checkBegin(Context context, Stream stream)
         {
             char beginSymbol = 'P'; // first symbol of the packet
-            return chekingToAccord(beginSymbol, context, stream);
+            return checkedRead(beginSymbol, context, stream);
         }
 
         // checks the Command symbol. There are only two commands: text and sound, if the symbol is correct than it returns true 
-        private static bool checkComand(MyContext context, MyStream stream)
+        private static bool checkComand(Context context, Stream stream)
         {
             char textCommandSymbol = 'T'; 
             char soundCommandSymbol = 'S';
@@ -118,18 +118,18 @@ namespace Gamanet_002
         }
 
         //checks the separator symbol. It should be ':', if the symbol is correct than it returns true
-        private static bool checkSeparator(MyContext context, MyStream stream)
+        private static bool checkSeparator(Context context, Stream stream)
         {
             char separatorSymbol = ':';
             
-            return chekingToAccord(separatorSymbol, context, stream); 
+            return checkedRead(separatorSymbol, context, stream); 
         }
 
         //checks the Parameters symbols and creates a string. Checks if he string corresponds to the command.
-        private static bool checkParams(MyContext context, MyStream stream)
+        private static bool checkParams(Context context, Stream stream)
         {
             bool normalSymbolInPacket = true;
-            context.setParametr("");
+            context.setParameter("");
             while (true)
             {
                 //checks if the string corresponds to the TEXT command, and checks if symbols lie inside of the ASCII range (32<x<127).
@@ -141,12 +141,12 @@ namespace Gamanet_002
                     else
                     {
 
-                    // ASCII
-                    int symbol = stream.Read();
+                         // ASCII
+                        int symbol = stream.Read();
 
                         context.setPacket(context.getPacket() + (char)symbol);
-                    if (symbol < 32 || symbol > 127) { normalSymbolInPacket = false; break; }
-                        else { context.setParametr(context.getParametr() + (char)symbol); } // creating the packet
+                        if (symbol < 32 || symbol > 127) { normalSymbolInPacket = false; break; }
+                        else { context.setParameter(context.getParameter() + (char)symbol); } // creating the packet
                     }
                 }
 
@@ -158,21 +158,20 @@ namespace Gamanet_002
                     if ((char)stream.Peak() == ':')
                         {
                              Regex rgx = new Regex(@"^[0-9]+,[0-9]+$");
-                             if (rgx.IsMatch(context.getParametr()))
+                             if (rgx.IsMatch(context.getParameter()))
                              {
 
                              //frequency is less than 37 or more than 32767 hertz.- or -duration is less than or equal to zero.
-                              String value = context.getParametr();
+                              String value = context.getParameter();
                               Char delimiter = ',';
                               String[] integerValue = value.Split(delimiter);
                               int frequency = Int32.Parse(integerValue[0]);
                               int duration = Int32.Parse(integerValue[1]);
 
                               if (frequency>=37 && frequency <= 32767 && duration>0 )
-                            {
-                                
+                             {
                                 normalSymbolInPacket = true;
-                            }
+                             }
                               else { normalSymbolInPacket = false; }
                               break;
                              }
@@ -184,9 +183,9 @@ namespace Gamanet_002
                         }
                     else {
                         int symbol = stream.Read();
-                        //context.setPacket(context.getPacket() + (char)symbol);
+                        context.setPacket(context.getPacket() + (char)symbol);
                         if (symbol < 32 || symbol > 127) { normalSymbolInPacket = false; break; }
-                        else { context.setParametr(context.getParametr() + (char)symbol); } // creating the parametr
+                        else { context.setParameter(context.getParameter() + (char)symbol); } // creating the parameter
                     }
                    
                 }
@@ -196,16 +195,16 @@ namespace Gamanet_002
         }
 
         // checks the last symbol of the packet
-        private static bool checkEnding(MyContext context, MyStream stream)
+        private static bool checkEnding(Context context, Stream stream)
         {
             char endingSymbol = 'E';
-            bool engingPacket = chekingToAccord(endingSymbol, context, stream);
+            bool engingPacket = checkedRead(endingSymbol, context, stream);
             
             return engingPacket;
         }
 
-        // checks the symbol being Strem.Read, if it coresponds to expected symbols (exampleSymbol) returns  true.
-        private static bool chekingToAccord(char exampleSymbol, MyContext context, MyStream stream)
+        // checks the symbol being Stream.Read, if it coresponds to expected symbol (exampleSymbol) returns  true.
+        private static bool checkedRead(char exampleSymbol, Context context, Stream stream)
         {
             int symbol = stream.Read();
 
@@ -219,15 +218,15 @@ namespace Gamanet_002
         }
 
         // executes comand 
-        private static void makeComand(MyContext context)
+        private static void executeCommand(Context context)
         {
             // displays parameter to console
-            if (context.getCommand().Equals("T")) { Console.WriteLine("\""+context.getParametr()+"\""); }
+            if (context.getCommand().Equals("T")) { Console.WriteLine("\""+context.getParameter()+"\""); }
             
             // makes the sound
             else if (context.getCommand().Equals("S"))
             {
-                String value = context.getParametr();
+                String value = context.getParameter();
                 Char delimiter = ',';
                 String[] integerValue = value.Split(delimiter);
                 Console.Beep(Int32.Parse(integerValue[0]), Int32.Parse(integerValue[1]));
